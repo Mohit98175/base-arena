@@ -1,2 +1,62 @@
 <!doctype html>
-<html><body><h1>BASE ARENA</h1></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BASE ARENA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body{background:#0a0a0a;color:#fff;font-family:system-ui,Inter,Arial;text-align:center;padding-top:56px}
+    .btn{background:#00e0ff;color:#0a0a0a;padding:.9rem 1.2rem;border-radius:14px;font-weight:800}
+    .btn:disabled{opacity:.6}
+    #game{display:none;margin-top:20px}
+    canvas{width:100%;height:78vh;background:#000}
+  </style>
+</head>
+<body>
+  <h1 class="text-4xl font-extrabold tracking-tight">BASE ARENA</h1>
+  <p class="text-gray-400 text-sm mt-1">Mint → Battle → Earn</p>
+  <button id="play" class="btn mt-4">Play</button>
+  <div id="status" class="mt-3 text-gray-300 text-sm"></div>
+
+  <div id="game"><canvas id="unity-canvas" tabindex="-1"></canvas></div>
+
+  <script>
+    const CHAIN_ID_HEX = "0x2105";
+    const BUILD_PATH = "/game/Build/";
+
+    async function ensureBase() {
+      if (!window.ethereum) throw new Error("No wallet detected");
+      const current = await ethereum.request({ method: "eth_chainId" });
+      if (current !== CHAIN_ID_HEX) {
+        await ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: CHAIN_ID_HEX }]
+        });
+      }
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      return provider.getSigner();
+    }
+
+    async function loadUnity() {
+      document.getElementById("game").style.display = "block";
+      const loaderUrl  = BUILD_PATH + "build.loader.js";
+      const config = {
+        dataUrl:       BUILD_PATH + "build.data",
+        frameworkUrl:  BUILD_PATH + "build.framework.js",
+        codeUrl:       BUILD_PATH + "build.wasm",
+      };
+      const canvas = document.getElementById("unity-canvas");
+      const s = document.createElement("script");
+      s.src = loaderUrl;
+      s.onload = () => createUnityInstance(canvas, config);
+      document.body.appendChild(s);
+    }
+
+    const statusEl = document.getElementById("status");
+    document.getElementById("play").addEventListener("click", async () => {
+      try {
+        document.getElementById("play").disabled = true;
+        statusEl.textContent = "Connecting
